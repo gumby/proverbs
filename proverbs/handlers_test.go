@@ -44,7 +44,6 @@ func TestProverbsGetAll(t *testing.T) {
 }
 
 func TestProverbGet(t *testing.T) {
-
 	srv := NewServer(mockStore{})
 	r := httptest.NewRequest(http.MethodGet, "/proverbs/1", nil)
 	w := httptest.NewRecorder()
