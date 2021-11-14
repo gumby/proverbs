@@ -2,6 +2,7 @@ package proverbs
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -17,7 +18,7 @@ func (m varReader) read(name string, r *http.Request) string {
 }
 
 func (s *Server) routes() {
-	s.router.HandleFunc("/proverbs", s.handleProverbsGetAll()).Methods(http.MethodGet)
+	s.router.HandleFunc("/proverbs", s.throttle(25, 25, 15*time.Second)(s.handleProverbsGetAll())).Methods(http.MethodGet)
 	s.router.HandleFunc("/proverbs/{id}", s.handleProverbsGet(varReader{})).Methods(http.MethodGet)
 
 	s.router.MethodNotAllowedHandler = s.handleMethodNotAllowed()
