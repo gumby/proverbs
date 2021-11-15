@@ -6,15 +6,14 @@ import (
 	"time"
 )
 
-type throttle struct {
+type limitStore map[string]*fixedLimiter
+type fixedLimiter struct {
 	mu     sync.Mutex
 	tokens uint
 }
 
-type limitStore map[string]*throttle
-
-func newThrottle(max uint, refill uint, d time.Duration) *throttle {
-	t := &throttle{
+func newFixedLimiter(max uint, refill uint, d time.Duration) *fixedLimiter {
+	t := &fixedLimiter{
 		tokens: max,
 	}
 
@@ -37,7 +36,7 @@ func newThrottle(max uint, refill uint, d time.Duration) *throttle {
 	return t
 }
 
-func (t *throttle) getToken() bool {
+func (t *fixedLimiter) getToken() bool {
 	if t.tokens <= 0 {
 		return false
 	}
@@ -51,7 +50,7 @@ func (t *throttle) getToken() bool {
 func (s *Server) throttle(max uint, refill uint, d time.Duration) func(http.Handler) http.HandlerFunc {
 	var store limitStore = make(limitStore)
 	return func(h http.Handler) http.HandlerFunc {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		return func(w http.ResponseWriter, r *http.Request) {
 			// This is a hack replacement of a login/authn/api key
 			userID := r.Header.Get("X-USER")
 			if userID == "" {
@@ -60,7 +59,7 @@ func (s *Server) throttle(max uint, refill uint, d time.Duration) func(http.Hand
 			}
 			t, ok := store[userID]
 			if !ok {
-				t = newThrottle(max, refill, d)
+				t = newFixedLimiter(max, refill, d)
 				store[userID] = t
 			}
 			if !t.getToken() {
@@ -68,6 +67,6 @@ func (s *Server) throttle(max uint, refill uint, d time.Duration) func(http.Hand
 				return
 			}
 			h.ServeHTTP(w, r)
-		})
+		}
 	}
 }
